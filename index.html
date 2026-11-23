@@ -1,0 +1,2688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FlashHand - Gesture-Controlled Flashcards</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    html, body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background-color: #05060f;
+      background-image: 
+        radial-gradient(circle at 50% 15%, rgba(30, 58, 138, 0.22) 0%, transparent 60%),
+        radial-gradient(circle at 85% 85%, rgba(0, 255, 208, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 15% 85%, rgba(255, 106, 213, 0.08) 0%, transparent 50%);
+      color: #f1f5f9;
+      font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+    }
+
+    /* Top Title Bar */
+    .title-bar {
+      position: fixed;
+      top: 16px;
+      left: 0;
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 32px;
+      z-index: 25;
+    }
+
+    .brand-group {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .title-text {
+      font-size: 32px;
+      font-weight: 900;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      background: linear-gradient(90deg, #00ffd0, #6a8dff, #ff6ad5, #ffd166, #00ffd0);
+      background-size: 300% 100%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: rainbowFlow 8s linear infinite;
+      filter: drop-shadow(0 0 18px rgba(0, 255, 208, 0.4));
+    }
+
+    .title-sub {
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #94a3b8;
+      font-weight: 600;
+    }
+
+    @keyframes rainbowFlow {
+      0% { background-position: 0% 50%; }
+      100% { background-position: 300% 50%; }
+    }
+
+    /* Action Toast Notification */
+    .action-toast-container {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-10px);
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .action-toast-container.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .action-toast-card {
+      background: rgba(18, 24, 46, 0.95);
+      border: 1.5px solid #00ffd0;
+      border-radius: 30px;
+      padding: 9px 24px;
+      box-shadow: 0 8px 30px rgba(0, 255, 208, 0.35);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #ffffff;
+      letter-spacing: 0.5px;
+    }
+
+    .action-toast-card.knew {
+      border-color: #10b981;
+      box-shadow: 0 8px 30px rgba(16, 185, 129, 0.4);
+    }
+
+    .action-toast-card.again {
+      border-color: #ef4444;
+      box-shadow: 0 8px 30px rgba(239, 68, 68, 0.4);
+    }
+
+    /* Glass Buttons */
+    .glass-btn {
+      background: rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      color: #e2e8f0;
+      padding: 8px 18px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.25s ease;
+      letter-spacing: 0.5px;
+    }
+
+    .glass-btn:hover {
+      background: rgba(255, 255, 255, 0.14);
+      border-color: #00ffd0;
+      color: #00ffd0;
+      box-shadow: 0 0 15px rgba(0, 255, 208, 0.25);
+    }
+
+    .glass-btn.primary {
+      background: linear-gradient(135deg, rgba(0, 255, 208, 0.25), rgba(106, 141, 255, 0.25));
+      border-color: rgba(0, 255, 208, 0.4);
+      color: #00ffd0;
+    }
+
+    .glass-btn.primary:hover {
+      background: linear-gradient(135deg, rgba(0, 255, 208, 0.4), rgba(106, 141, 255, 0.4));
+      box-shadow: 0 0 20px rgba(0, 255, 208, 0.4);
+    }
+
+    /* Left Stats & HUD Panel */
+    .left-panel {
+      position: fixed;
+      top: 80px;
+      left: 24px;
+      bottom: 24px;
+      width: 300px;
+      background: rgba(15, 20, 35, 0.7);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 20px;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55);
+      padding: 20px 20px;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      overflow-y: auto;
+    }
+
+    .panel-section-title {
+      font-size: 11px;
+      font-weight: 800;
+      color: #00ffd0;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+
+    /* Active Gesture HUD Card */
+    .active-gesture-card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .hud-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .hud-gesture-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .hud-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #64748b;
+      box-shadow: 0 0 8px currentColor;
+    }
+
+    .hud-state-text {
+      font-size: 20px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: 0.5px;
+    }
+
+    .metric-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .metric-label-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 600;
+      color: #94a3b8;
+    }
+
+    .progress-track-sm {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .progress-fill-sm {
+      height: 100%;
+      width: 0%;
+      background: #00ffd0;
+      border-radius: 3px;
+      transition: width 0.08s ease-out;
+      box-shadow: 0 0 6px currentColor;
+    }
+
+    /* Hold Timer Progress Bar */
+    .hold-timer-box {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-top: 2px;
+    }
+
+    .hold-bar-track {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .hold-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #ffd166, #ff6ad5);
+      border-radius: 3px;
+      transition: width 0.05s linear;
+    }
+
+    /* Cooldown Bar */
+    .cooldown-box {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .cooldown-bar-track {
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .cooldown-bar-fill {
+      height: 100%;
+      width: 100%;
+      background: #00ffd0;
+      transition: width 0.05s linear;
+    }
+
+    /* Stats Card in Left Panel */
+    .deck-stats-card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .deck-stats-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      color: #94a3b8;
+    }
+
+    .deck-stats-val {
+      font-weight: 700;
+      color: #ffffff;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Center Flashcard Arena */
+    .flashcard-arena {
+      position: fixed;
+      top: 80px;
+      left: 345px;
+      right: 410px;
+      bottom: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      z-index: 15;
+    }
+
+    /* Deck Header Stats */
+    .deck-progress-bar-box {
+      width: 100%;
+      max-width: 580px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .deck-progress-labels {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: #94a3b8;
+    }
+
+    .card-counter-tag {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.06);
+      padding: 4px 12px;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .mastery-score-tag {
+      color: #00ffd0;
+      letter-spacing: 0.5px;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 4px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #00ffd0, #6a8dff);
+      border-radius: 4px;
+      transition: width 0.35s ease;
+      box-shadow: 0 0 10px rgba(0, 255, 208, 0.5);
+    }
+
+    /* 3D Flip Flashcard */
+    .card-3d-scene {
+      width: 100%;
+      max-width: 580px;
+      height: 330px;
+      perspective: 1200px;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .card-3d-wrapper {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transform-style: preserve-3d;
+      transition: transform 0.65s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .card-3d-wrapper.is-flipped {
+      transform: rotateY(180deg);
+    }
+
+    .card-face {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      border-radius: 24px;
+      background: rgba(15, 20, 38, 0.82);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1.5px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.65), inset 0 1px 2px rgba(255, 255, 255, 0.15);
+      padding: 28px 32px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .card-face:hover {
+      border-color: rgba(0, 255, 208, 0.45);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75), 0 0 25px rgba(0, 255, 208, 0.18);
+    }
+
+    .card-face.front {
+      border-top: 3.5px solid #00ffd0;
+    }
+
+    .card-face.back {
+      transform: rotateY(180deg);
+      border-top: 3.5px solid #ffd166;
+      background: rgba(20, 22, 42, 0.88);
+    }
+
+    .card-badge-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .face-type-pill {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 4px 12px;
+      border-radius: 20px;
+    }
+
+    .pill-front {
+      color: #00ffd0;
+      background: rgba(0, 255, 208, 0.12);
+      border: 1px solid rgba(0, 255, 208, 0.3);
+    }
+
+    .pill-back {
+      color: #ffd166;
+      background: rgba(255, 209, 102, 0.12);
+      border: 1px solid rgba(255, 209, 102, 0.3);
+    }
+
+    .card-status-indicator {
+      font-size: 12px;
+      font-weight: 600;
+      color: #94a3b8;
+    }
+
+    .card-body-text {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-size: 24px;
+      font-weight: 600;
+      line-height: 1.45;
+      color: #ffffff;
+      padding: 10px 8px;
+      overflow-y: auto;
+    }
+
+    .card-body-text.answer-text {
+      color: #fef08a;
+      text-shadow: 0 0 15px rgba(255, 209, 102, 0.25);
+    }
+
+    .card-hint-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: #64748b;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      padding-top: 10px;
+    }
+
+    .gesture-hint {
+      color: #00ffd0;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    /* Controls Panel */
+    .controls-panel {
+      width: 100%;
+      max-width: 580px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .primary-btn-row {
+      display: flex;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .action-btn {
+      flex: 1;
+      background: rgba(15, 20, 38, 0.7);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      padding: 12px 10px;
+      color: #ffffff;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+    }
+
+    .action-btn:hover {
+      transform: translateY(-2px);
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .action-btn:active {
+      transform: translateY(1px);
+    }
+
+    .action-btn.btn-flip {
+      flex: 1.3;
+      background: linear-gradient(135deg, rgba(0, 255, 208, 0.18), rgba(106, 141, 255, 0.18));
+      border-color: rgba(0, 255, 208, 0.35);
+    }
+
+    .action-btn.btn-flip:hover {
+      border-color: #00ffd0;
+      box-shadow: 0 0 20px rgba(0, 255, 208, 0.3);
+    }
+
+    .action-btn.btn-knew {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(0, 255, 208, 0.18));
+      border-color: rgba(16, 185, 129, 0.4);
+    }
+
+    .action-btn.btn-knew:hover {
+      border-color: #10b981;
+      box-shadow: 0 0 20px rgba(16, 185, 129, 0.35);
+    }
+
+    .action-btn.btn-again {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.18), rgba(255, 106, 213, 0.18));
+      border-color: rgba(239, 68, 68, 0.4);
+    }
+
+    .action-btn.btn-again:hover {
+      border-color: #ef4444;
+      box-shadow: 0 0 20px rgba(239, 68, 68, 0.35);
+    }
+
+    .btn-main-label {
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-shortcut-key {
+      font-size: 10px;
+      color: #94a3b8;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    /* Right Side: Camera PiP + Gesture Legend Container */
+    .right-camera-column {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 360px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      z-index: 20;
+    }
+
+    /* PiP Webcam Container */
+    .pip-container {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      border: 2px solid #00ffd0;
+      border-radius: 18px;
+      box-shadow: 0 0 25px rgba(0, 255, 208, 0.4), inset 0 0 15px rgba(0, 255, 208, 0.15);
+      overflow: hidden;
+      background: #020308;
+      transition: border-color 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .pip-container.action-glow {
+      border-color: #ffd166;
+      box-shadow: 0 0 35px rgba(255, 209, 102, 0.6), inset 0 0 20px rgba(255, 209, 102, 0.25);
+    }
+
+    #webcamVideo {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1);
+    }
+
+    #overlayCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      transform: scaleX(-1);
+      pointer-events: none;
+    }
+
+    /* PiP Live Status Badge (Top-Left of camera) */
+    .pip-live-badge {
+      position: absolute;
+      top: 10px;
+      left: 12px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      color: #00ffd0;
+      background: rgba(5, 6, 15, 0.82);
+      backdrop-filter: blur(4px);
+      padding: 4px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(0, 255, 208, 0.3);
+      z-index: 5;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .pip-live-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #00ffd0;
+      box-shadow: 0 0 6px currentColor;
+    }
+
+    /* Small Live Indicator inside PiP (Top-Right) */
+    .pip-gesture-indicator {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      color: #ffffff;
+      background: rgba(15, 20, 38, 0.88);
+      backdrop-filter: blur(6px);
+      padding: 4px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Gesture Help Legend Card (Directly under camera) */
+    .pip-legend-card {
+      width: 100%;
+      background: rgba(15, 20, 35, 0.75);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .legend-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 10px;
+      font-weight: 800;
+      color: #00ffd0;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+
+    .legend-items-list {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      padding: 5px 8px;
+      font-size: 11px;
+      transition: all 0.2s ease;
+    }
+
+    .legend-row.active {
+      background: rgba(0, 255, 208, 0.15);
+      border-color: #00ffd0;
+      box-shadow: 0 0 10px rgba(0, 255, 208, 0.3);
+    }
+
+    .legend-gesture-side {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .legend-action-side {
+      color: #94a3b8;
+      font-weight: 600;
+    }
+
+    /* Modal / Drawer for Card Input */
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(3, 4, 10, 0.85);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .modal-backdrop.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .input-modal-card {
+      width: 90%;
+      max-width: 600px;
+      background: rgba(18, 24, 42, 0.96);
+      border: 1px solid rgba(0, 255, 208, 0.35);
+      border-radius: 22px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.85), 0 0 35px rgba(0, 255, 208, 0.2);
+      padding: 26px 30px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      transform: translateY(20px);
+      transition: transform 0.3s ease;
+    }
+
+    .modal-backdrop.show .input-modal-card {
+      transform: translateY(0);
+    }
+
+    /* Modal Tab Bar */
+    .modal-tab-bar {
+      display: flex;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 3px;
+      gap: 4px;
+    }
+
+    .modal-tab-btn {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 8px 14px;
+      border-radius: 9px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+
+    .modal-tab-btn.active {
+      background: linear-gradient(135deg, rgba(0, 255, 208, 0.22), rgba(106, 141, 255, 0.22));
+      color: #00ffd0;
+      border: 1px solid rgba(0, 255, 208, 0.4);
+      box-shadow: 0 0 12px rgba(0, 255, 208, 0.2);
+    }
+
+    .modal-tab-pane {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .deck-input-text {
+      width: 100%;
+      background: rgba(5, 7, 18, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 10px;
+      color: #f1f5f9;
+      font-family: inherit;
+      font-size: 13px;
+      padding: 10px 14px;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+
+    .deck-input-text:focus {
+      border-color: #00ffd0;
+      box-shadow: 0 0 10px rgba(0, 255, 208, 0.25);
+    }
+
+    .field-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: #cbd5e1;
+    }
+
+    .input-subtext {
+      font-size: 11px;
+      color: #64748b;
+      line-height: 1.4;
+    }
+
+    .gemini-loading-box {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(0, 255, 208, 0.08);
+      border: 1px solid rgba(0, 255, 208, 0.25);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #00ffd0;
+    }
+
+    .spinner-sm {
+      width: 20px;
+      height: 20px;
+      border: 2.5px solid rgba(0, 255, 208, 0.2);
+      border-top-color: #00ffd0;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    .gemini-status-box {
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .gemini-status-box.error {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+    }
+
+    .gemini-status-box.hint {
+      background: rgba(0, 255, 208, 0.08);
+      border: 1px solid rgba(0, 255, 208, 0.3);
+      color: #cbd5e1;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 12px;
+    }
+
+    .modal-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .close-modal-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-size: 24px;
+      cursor: pointer;
+      line-height: 1;
+      padding: 4px;
+    }
+
+    .close-modal-btn:hover {
+      color: #ffffff;
+    }
+
+    .input-instruction {
+      font-size: 13px;
+      color: #cbd5e1;
+      line-height: 1.5;
+    }
+
+    .input-instruction code {
+      background: rgba(0, 255, 208, 0.12);
+      color: #00ffd0;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: Consolas, monospace;
+    }
+
+    .deck-textarea {
+      width: 100%;
+      height: 200px;
+      background: rgba(5, 7, 18, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      color: #f1f5f9;
+      font-family: inherit;
+      font-size: 14px;
+      line-height: 1.5;
+      padding: 14px;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+
+    .deck-textarea:focus {
+      border-color: #00ffd0;
+      box-shadow: 0 0 12px rgba(0, 255, 208, 0.2);
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    /* Completed Deck Overlay Card */
+    .completion-banner {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(10, 15, 30, 0.94);
+      border-radius: 24px;
+      border: 2px solid #00ffd0;
+      box-shadow: 0 0 35px rgba(0, 255, 208, 0.4);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      padding: 24px;
+      text-align: center;
+      z-index: 10;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .completion-banner.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .completion-icon {
+      font-size: 48px;
+      filter: drop-shadow(0 0 18px rgba(0, 255, 208, 0.6));
+    }
+
+    .completion-title {
+      font-size: 26px;
+      font-weight: 900;
+      color: #ffffff;
+      letter-spacing: 1px;
+    }
+
+    .completion-subtitle {
+      font-size: 14px;
+      color: #cbd5e1;
+      max-width: 400px;
+      line-height: 1.5;
+    }
+
+    .completion-stats {
+      display: flex;
+      gap: 16px;
+      margin: 4px 0;
+    }
+
+    .comp-stat-box {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 8px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .comp-stat-num {
+      font-size: 22px;
+      font-weight: 800;
+      color: #00ffd0;
+    }
+
+    .comp-stat-lbl {
+      font-size: 11px;
+      font-weight: 600;
+      color: #94a3b8;
+      text-transform: uppercase;
+    }
+
+    /* Loading & Error Screens */
+    .loading-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: #05060f;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 22px;
+      z-index: 100;
+      transition: opacity 0.5s ease;
+    }
+
+    .spinner {
+      width: 56px;
+      height: 56px;
+      border: 4px solid rgba(0, 255, 208, 0.15);
+      border-top-color: #00ffd0;
+      border-radius: 50%;
+      animation: spin 0.9s cubic-bezier(0.5, 0.1, 0.5, 0.9) infinite;
+      box-shadow: 0 0 20px rgba(0, 255, 208, 0.3);
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: 0.8px;
+      color: #cbd5e1;
+      text-align: center;
+      max-width: 480px;
+      line-height: 1.5;
+    }
+
+    .error-box {
+      display: none;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid #ef4444;
+      border-radius: 14px;
+      padding: 18px 24px;
+      color: #fca5a5;
+      font-size: 14px;
+      line-height: 1.6;
+      max-width: 560px;
+      text-align: center;
+      box-shadow: 0 0 30px rgba(239, 68, 68, 0.3);
+    }
+
+    .error-box code {
+      background: rgba(0, 0, 0, 0.4);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #00ffd0;
+      font-family: Consolas, monospace;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 1250px) {
+      .flashcard-arena {
+        right: 390px;
+        left: 310px;
+      }
+      .right-camera-column {
+        width: 340px;
+      }
+    }
+
+    @media (max-width: 980px) {
+      .left-panel {
+        display: none;
+      }
+      .flashcard-arena {
+        left: 20px;
+        right: 20px;
+        bottom: 340px;
+      }
+      .right-camera-column {
+        width: 300px;
+        bottom: 16px;
+        right: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Title Bar -->
+  <header class="title-bar">
+    <div class="brand-group">
+      <h1 class="title-text">FlashHand</h1>
+      <span class="title-sub">Gesture-Controlled Flashcards</span>
+    </div>
+
+    <div style="display: flex; gap: 10px; align-items: center;">
+      <button class="glass-btn primary" id="btnOpenGeminiModal">
+        &#10024; Generate with Gemini
+      </button>
+      <button class="glass-btn" id="btnOpenInputModal">
+        &#9998; Edit Deck / Cards
+      </button>
+    </div>
+  </header>
+
+  <!-- On-Screen Toast Notification -->
+  <div class="action-toast-container" id="actionToast">
+    <div class="action-toast-card" id="toastCard">
+      <span id="toastIcon">&#128260;</span>
+      <span id="toastMessage">Card Flipped (Fist held 0.4s)</span>
+    </div>
+  </div>
+
+  <!-- Left Stats & Gesture HUD Panel -->
+  <aside class="left-panel">
+    <span class="panel-section-title">Live Gesture HUD</span>
+
+    <!-- Active Gesture State Card -->
+    <div class="active-gesture-card">
+      <div class="hud-header">
+        <span>Hand State</span>
+        <span id="hudConfidenceText">Ready</span>
+      </div>
+
+      <div class="hud-gesture-badge">
+        <div class="hud-dot" id="hudStateDot"></div>
+        <span class="hud-state-text" id="hudStateText">No hand</span>
+      </div>
+
+      <!-- Hand Openness Meter -->
+      <div class="metric-row">
+        <div class="metric-label-row">
+          <span>Hand Openness</span>
+          <span id="hudOpennessVal" style="color: #00ffd0; font-weight:700;">0%</span>
+        </div>
+        <div class="progress-track-sm">
+          <div class="progress-fill-sm" id="hudOpennessFill" style="width: 0%;"></div>
+        </div>
+      </div>
+
+      <!-- Hold Timer Bar (for 0.4s fist / 0.5s open hand) -->
+      <div class="hold-timer-box">
+        <div class="metric-label-row">
+          <span>Hold to Trigger</span>
+          <span id="hudHoldVal" style="color: #ffd166; font-weight:700;">--</span>
+        </div>
+        <div class="hold-bar-track">
+          <div class="hold-bar-fill" id="hudHoldFill" style="width: 0%;"></div>
+        </div>
+      </div>
+
+      <!-- 1-Second Cooldown Bar -->
+      <div class="cooldown-box">
+        <div class="metric-label-row">
+          <span>Gesture Cooldown (1s)</span>
+          <span id="hudCooldownVal" style="color: #94a3b8; font-size:11px;">Ready</span>
+        </div>
+        <div class="cooldown-bar-track">
+          <div class="cooldown-bar-fill" id="hudCooldownFill" style="width: 100%;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Deck Statistics Card -->
+    <span class="panel-section-title">Session Progress</span>
+    <div class="deck-stats-card">
+      <div class="deck-stats-row">
+        <span>Queue Remaining:</span>
+        <span class="deck-stats-val" id="statRemainingVal">6</span>
+      </div>
+      <div class="deck-stats-row">
+        <span>Mastered (Knew it):</span>
+        <span class="deck-stats-val" id="statMasteredVal" style="color:#00ffd0;">0</span>
+      </div>
+      <div class="deck-stats-row">
+        <span>Repeats (Again):</span>
+        <span class="deck-stats-val" id="statAgainVal" style="color:#ff6ad5;">0</span>
+      </div>
+      <div class="deck-stats-row">
+        <span>Total Actions:</span>
+        <span class="deck-stats-val" id="statTotalActionsVal">0</span>
+      </div>
+    </div>
+
+    <div style="margin-top: auto; font-size: 11px; color: #64748b; line-height: 1.4; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 10px;">
+      &#128274; All processing happens locally in your browser. No video is uploaded.
+    </div>
+  </aside>
+
+  <!-- Center Flashcard Arena -->
+  <main class="flashcard-arena">
+    <!-- Progress Bar Header -->
+    <div class="deck-progress-bar-box">
+      <div class="deck-progress-labels">
+        <span class="card-counter-tag" id="cardCounterTag">Card 1 / 6</span>
+        <span class="mastery-score-tag" id="masteryScoreTag">0 / 6 Mastered (0%)</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progressFillBar" style="width: 0%;"></div>
+      </div>
+    </div>
+
+    <!-- 3D Flip Flashcard -->
+    <div class="card-3d-scene" id="cardScene" title="Click or Hold Fist for 0.4s to Flip">
+      <div class="card-3d-wrapper" id="cardWrapper">
+        <!-- FRONT FACE (Question) -->
+        <div class="card-face front">
+          <div class="card-badge-row">
+            <span class="face-type-pill pill-front">Question</span>
+            <span class="card-status-indicator" id="cardQueueStatus">In Deck</span>
+          </div>
+
+          <div class="card-body-text" id="cardQuestionText">
+            What is the powerhouse of the cell?
+          </div>
+
+          <div class="card-hint-bottom">
+            <span>&#128070; Click or Space to flip</span>
+            <span class="gesture-hint">&#9995; Open Palm to flip</span>
+          </div>
+        </div>
+
+        <!-- BACK FACE (Answer) -->
+        <div class="card-face back">
+          <div class="card-badge-row">
+            <span class="face-type-pill pill-back">Answer</span>
+            <span class="card-status-indicator">&#10004; Solution</span>
+          </div>
+
+          <div class="card-body-text answer-text" id="cardAnswerText">
+            Mitochondria
+          </div>
+
+          <div class="card-hint-bottom">
+            <span>&#128077; Knew it | &#128078; Again</span>
+            <span class="gesture-hint">&#9995; Open Palm to flip</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Completion Banner (Overlay when all mastered) -->
+      <div class="completion-banner" id="completionBanner">
+        <div class="completion-icon">&#127942;</div>
+        <h2 class="completion-title">Deck Completed!</h2>
+        <p class="completion-subtitle">
+          Outstanding! You have successfully mastered every flashcard in this set.
+        </p>
+        <div class="completion-stats">
+          <div class="comp-stat-box">
+            <span class="comp-stat-num" id="compMasteredCount">6</span>
+            <span class="comp-stat-lbl">Mastered</span>
+          </div>
+          <div class="comp-stat-box">
+            <span class="comp-stat-num" id="compRepeatsCount">0</span>
+            <span class="comp-stat-lbl">Repeats</span>
+          </div>
+        </div>
+        <div style="display: flex; gap: 12px;">
+          <button class="glass-btn primary" id="btnRestartDeck">&#8635; Study Again</button>
+          <button class="glass-btn" id="btnEditFromBanner">&#9998; Edit Deck</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Buttons Panel -->
+    <div class="controls-panel">
+      <div class="primary-btn-row">
+        <button class="action-btn" id="btnPrevCard" title="Previous Card (Left Arrow / Point Left)">
+          <span class="btn-main-label">&#128072; Prev</span>
+          <span class="btn-shortcut-key">&#128072; Point Left / &larr;</span>
+        </button>
+
+        <button class="action-btn btn-flip" id="btnFlipCard" title="Flip Card (Space / Open Palm)">
+          <span class="btn-main-label">&#128260; Flip Card</span>
+          <span class="btn-shortcut-key">&#9995; Open Palm / Space</span>
+        </button>
+
+        <button class="action-btn" id="btnNextCard" title="Next Card (Right Arrow / Point Right)">
+          <span class="btn-main-label">&#128073; Next</span>
+          <span class="btn-shortcut-key">&#128073; Point Right / &rarr;</span>
+        </button>
+      </div>
+
+      <div class="primary-btn-row">
+        <button class="action-btn btn-again" id="btnAgain" title="Put back into deck (A / Thumbs Down)">
+          <span class="btn-main-label">&#128078; Again</span>
+          <span class="btn-shortcut-key">&#128078; Thumbs Down / [A]</span>
+        </button>
+
+        <button class="action-btn btn-knew" id="btnKnew" title="Mark as Mastered (K / Thumbs Up)">
+          <span class="btn-main-label">&#128077; I Knew It!</span>
+          <span class="btn-shortcut-key">&#128077; Thumbs Up / [K]</span>
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Right Side Column: Camera PiP + Gesture Help Legend Underneath -->
+  <aside class="right-camera-column">
+    <!-- PiP Webcam Box -->
+    <div class="pip-container" id="pipContainer">
+      <div class="pip-live-badge">
+        <div class="pip-live-dot" id="pipLiveDot"></div>
+        <span>Vision Feed</span>
+      </div>
+
+      <!-- Small Live Indicator inside PiP (Top-Right) -->
+      <div class="pip-gesture-indicator" id="pipGestureIndicator">
+        <span id="pipIndicatorIcon">&#9675;</span>
+        <span id="pipIndicatorText">No hand</span>
+      </div>
+
+      <video id="webcamVideo" playsinline autoplay muted></video>
+      <canvas id="overlayCanvas"></canvas>
+    </div>
+
+    <!-- Gesture Help Legend Card (Directly Under Camera) -->
+    <div class="pip-legend-card">
+      <div class="legend-title-row">
+        <span>Gesture Controls</span>
+        <span style="color:#94a3b8; font-size:9px;">Cooldown 1.0s</span>
+      </div>
+
+      <div class="legend-items-list">
+        <div class="legend-row" id="legendFlip">
+          <div class="legend-gesture-side">
+            <span>&#9995;</span> <span>Open Palm</span>
+          </div>
+          <span class="legend-action-side">Flip Card (Q&harr;A)</span>
+        </div>
+
+        <div class="legend-row" id="legendThumbsUp">
+          <div class="legend-gesture-side">
+            <span>&#128077;</span> <span>Thumbs Up</span>
+          </div>
+          <span class="legend-action-side">I Knew It!</span>
+        </div>
+
+        <div class="legend-row" id="legendThumbsDown">
+          <div class="legend-gesture-side">
+            <span>&#128078;</span> <span>Thumbs Down</span>
+          </div>
+          <span class="legend-action-side">Again</span>
+        </div>
+
+        <div class="legend-row" id="legendNext">
+          <div class="legend-gesture-side">
+            <span>&#128073;</span> <span>Point Right</span>
+          </div>
+          <span class="legend-action-side">Next Card</span>
+        </div>
+
+        <div class="legend-row" id="legendPrev">
+          <div class="legend-gesture-side">
+            <span>&#128072;</span> <span>Point Left</span>
+          </div>
+          <span class="legend-action-side">Prev Card</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Deck Input & AI Modal -->
+  <div class="modal-backdrop" id="inputModal">
+    <div class="input-modal-card">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modalMainTitle">&#10024; Deck Manager</h2>
+        <button class="close-modal-btn" id="btnCloseModal" title="Close">&times;</button>
+      </div>
+
+      <!-- Tab Switcher -->
+      <div class="modal-tab-bar">
+        <button class="modal-tab-btn active" id="tabGeminiBtn">
+          <span>&#10024;</span> Generate with Gemini (AI)
+        </button>
+        <button class="modal-tab-btn" id="tabManualBtn">
+          <span>&#128221;</span> Manual / Paste Cards
+        </button>
+      </div>
+
+      <!-- TAB 1: GENERATE WITH GEMINI -->
+      <div class="modal-tab-pane" id="paneGemini">
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div class="field-label-row">
+            <label for="geminiApiKeyInput">Gemini API Key</label>
+            <span style="color:#00ffd0; font-size:11px;">model: gemini-2.5-flash</span>
+          </div>
+          <input type="password" id="geminiApiKeyInput" class="deck-input-text" autocomplete="off" spellcheck="false" placeholder="Enter your Gemini API key (e.g. AIzaSy...)">
+          <span class="input-subtext">&#128274; Stored only in browser memory during this session. Never hardcoded or sent anywhere else.</span>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div class="field-label-row">
+            <label for="geminiNotesInput">Lecture Notes or Study Text</label>
+            <span style="color:#94a3b8; font-size:11px;">Generates 10 cards</span>
+          </div>
+          <textarea class="deck-textarea" id="geminiNotesInput" rows="6" placeholder="Paste your lecture slides, textbook excerpts, bullet points, or summary here..."></textarea>
+        </div>
+
+        <!-- Status / Hint / Error Message Container -->
+        <div class="gemini-status-box" id="geminiStatusBox" style="display: none;"></div>
+
+        <!-- Loading Spinner Container -->
+        <div class="gemini-loading-box" id="geminiLoadingBox" style="display: none;">
+          <div class="spinner-sm"></div>
+          <span>Calling Gemini 2.5 Flash... Analyzing notes and generating 10 cards...</span>
+        </div>
+
+        <div class="modal-actions">
+          <button class="glass-btn primary" id="btnGenerateCards">
+            &#10024; Generate Cards
+          </button>
+          <button class="glass-btn" id="btnDismissModalGemini">Close</button>
+        </div>
+      </div>
+
+      <!-- TAB 2: MANUAL / PASTE CARDS -->
+      <div class="modal-tab-pane" id="paneManual" style="display: none;">
+        <p class="input-instruction">
+          Paste your flashcards below, one card per line in the format:<br>
+          <code>Question | Answer</code>
+        </p>
+
+        <textarea class="deck-textarea" id="deckTextarea" spellcheck="false" placeholder="What is the powerhouse of the cell? | Mitochondria&#10;What is the capital of Japan? | Tokyo&#10;What does CPU stand for? | Central Processing Unit"></textarea>
+
+        <div class="modal-actions">
+          <div style="display:flex; gap:10px;">
+            <button class="glass-btn primary" id="btnLoadCards">&#10004; Load Cards</button>
+            <button class="glass-btn" id="btnLoadExample">&#128161; Load 6 Examples</button>
+          </div>
+          <button class="glass-btn" id="btnDismissModal">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading / Error Overlay -->
+  <div class="loading-screen" id="loadingScreen">
+    <div class="spinner" id="spinner"></div>
+    <p class="loading-text" id="loadingText">
+      Loading MediaPipe HandLandmarker (GPU) &amp; starting webcam&hellip;
+    </p>
+    <div class="error-box" id="errorBox"></div>
+  </div>
+
+  <!-- Main ES Module Script -->
+  <script type="module">
+    import {
+      FilesetResolver,
+      HandLandmarker
+    } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+
+    // ==========================================
+    // 1. DOM REFERENCES
+    // ==========================================
+    const video = document.getElementById('webcamVideo');
+    const overlayCanvas = document.getElementById('overlayCanvas');
+    const oCtx = overlayCanvas.getContext('2d');
+    const pipContainer = document.getElementById('pipContainer');
+    const pipLiveDot = document.getElementById('pipLiveDot');
+    const pipIndicatorIcon = document.getElementById('pipIndicatorIcon');
+    const pipIndicatorText = document.getElementById('pipIndicatorText');
+
+    const loadingScreen = document.getElementById('loadingScreen');
+    const spinner = document.getElementById('spinner');
+    const loadingText = document.getElementById('loadingText');
+    const errorBox = document.getElementById('errorBox');
+
+    const cardScene = document.getElementById('cardScene');
+    const cardWrapper = document.getElementById('cardWrapper');
+    const cardQuestionText = document.getElementById('cardQuestionText');
+    const cardAnswerText = document.getElementById('cardAnswerText');
+    const cardCounterTag = document.getElementById('cardCounterTag');
+    const masteryScoreTag = document.getElementById('masteryScoreTag');
+    const progressFillBar = document.getElementById('progressFillBar');
+    const cardQueueStatus = document.getElementById('cardQueueStatus');
+
+    const btnPrevCard = document.getElementById('btnPrevCard');
+    const btnFlipCard = document.getElementById('btnFlipCard');
+    const btnNextCard = document.getElementById('btnNextCard');
+    const btnAgain = document.getElementById('btnAgain');
+    const btnKnew = document.getElementById('btnKnew');
+
+    const hudStateDot = document.getElementById('hudStateDot');
+    const hudStateText = document.getElementById('hudStateText');
+    const hudConfidenceText = document.getElementById('hudConfidenceText');
+    const hudOpennessVal = document.getElementById('hudOpennessVal');
+    const hudOpennessFill = document.getElementById('hudOpennessFill');
+    const hudHoldVal = document.getElementById('hudHoldVal');
+    const hudHoldFill = document.getElementById('hudHoldFill');
+    const hudCooldownVal = document.getElementById('hudCooldownVal');
+    const hudCooldownFill = document.getElementById('hudCooldownFill');
+
+    const statRemainingVal = document.getElementById('statRemainingVal');
+    const statMasteredVal = document.getElementById('statMasteredVal');
+    const statAgainVal = document.getElementById('statAgainVal');
+    const statTotalActionsVal = document.getElementById('statTotalActionsVal');
+
+    const legendFlip = document.getElementById('legendFlip');
+    const legendThumbsUp = document.getElementById('legendThumbsUp');
+    const legendThumbsDown = document.getElementById('legendThumbsDown');
+    const legendNext = document.getElementById('legendNext');
+    const legendPrev = document.getElementById('legendPrev');
+
+    const actionToast = document.getElementById('actionToast');
+    const toastCard = document.getElementById('toastCard');
+    const toastIcon = document.getElementById('toastIcon');
+    const toastMessage = document.getElementById('toastMessage');
+
+    const inputModal = document.getElementById('inputModal');
+    const btnOpenGeminiModal = document.getElementById('btnOpenGeminiModal');
+    const btnOpenInputModal = document.getElementById('btnOpenInputModal');
+    const btnCloseModal = document.getElementById('btnCloseModal');
+    const btnDismissModal = document.getElementById('btnDismissModal');
+    const btnDismissModalGemini = document.getElementById('btnDismissModalGemini');
+    const tabGeminiBtn = document.getElementById('tabGeminiBtn');
+    const tabManualBtn = document.getElementById('tabManualBtn');
+    const paneGemini = document.getElementById('paneGemini');
+    const paneManual = document.getElementById('paneManual');
+    const geminiApiKeyInput = document.getElementById('geminiApiKeyInput');
+    const geminiNotesInput = document.getElementById('geminiNotesInput');
+    const geminiStatusBox = document.getElementById('geminiStatusBox');
+    const geminiLoadingBox = document.getElementById('geminiLoadingBox');
+    const btnGenerateCards = document.getElementById('btnGenerateCards');
+
+    const btnLoadCards = document.getElementById('btnLoadCards');
+    const btnLoadExample = document.getElementById('btnLoadExample');
+    const deckTextarea = document.getElementById('deckTextarea');
+
+    const completionBanner = document.getElementById('completionBanner');
+    const compMasteredCount = document.getElementById('compMasteredCount');
+    const compRepeatsCount = document.getElementById('compRepeatsCount');
+    const btnRestartDeck = document.getElementById('btnRestartDeck');
+    const btnEditFromBanner = document.getElementById('btnEditFromBanner');
+
+    // ==========================================
+    // 2. STATE & FLASHCARD DECK DATA
+    // ==========================================
+    let handLandmarker = null;
+    let lastVideoTime = -1;
+    let audioCtx = null;
+    let toastTimeout = null;
+
+    const EXAMPLE_CARDS = [
+      { question: "What is the powerhouse of the cell?", answer: "Mitochondria" },
+      { question: "What is the capital of Japan?", answer: "Tokyo" },
+      { question: "What does CPU stand for in computer science?", answer: "Central Processing Unit" },
+      { question: "What is Newton's Third Law of Motion?", answer: "For every action, there is an equal and opposite reaction." },
+      { question: "Which planet is known as the Red Planet?", answer: "Mars" },
+      { question: "What is the chemical symbol for Gold?", answer: "Au (from Latin Aurum)" }
+    ];
+
+    let originalDeck = [...EXAMPLE_CARDS];
+    let studyQueue = [...EXAMPLE_CARDS];
+    let currentIndex = 0;
+    let isFlipped = false;
+    let totalMasteredCount = 0;
+    let totalAgainCount = 0;
+    let totalActionCount = 0;
+
+    // ==========================================
+    // 3. GESTURE RECOGNITION & SMOOTHING STATE
+    // ==========================================
+    let smoothedOpenness = null; // Exponential moving average of openness
+    let currentLiveGesture = 'No hand'; // 'Open palm' | 'Thumbs up' | 'Thumbs down' | 'Point right' | 'Point left' | 'No hand'
+
+    // Timing and cooldowns
+    let openPalmHoldStartTime = 0;
+    let thumbsUpStartTime = 0;
+    let thumbsDownStartTime = 0;
+    let pointRightStartTime = 0;
+    let pointLeftStartTime = 0;
+
+    const OPEN_PALM_HOLD_REQ_MS = 300;   // 0.3s open palm to flip between Q&A
+    const THUMB_HOLD_REQ_MS = 250;       // 0.25s for stable thumbs up / down
+    const POINT_HOLD_REQ_MS = 250;       // 0.25s for stable pointing navigation
+    const GESTURE_COOLDOWN_MS = 1000;    // 1.0s cooldown after any triggered action
+
+    let lastActionTriggerTime = 0;
+
+    // ==========================================
+    // 4. WEBAUDIO SOUND FEEDBACK
+    // ==========================================
+    function playAudioTone(type) {
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        if (type === 'flip') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(320, now);
+          osc.frequency.exponentialRampToValueAtTime(540, now + 0.12);
+
+          gain.gain.setValueAtTime(0.001, now);
+          gain.gain.linearRampToValueAtTime(0.09, now + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.14);
+
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now);
+          osc.stop(now + 0.15);
+        } else if (type === 'knew') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(523.25, now); // C5
+          osc.frequency.setValueAtTime(659.25, now + 0.08); // E5
+          osc.frequency.setValueAtTime(783.99, now + 0.16); // G5
+
+          gain.gain.setValueAtTime(0.001, now);
+          gain.gain.linearRampToValueAtTime(0.12, now + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
+
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now);
+          osc.stop(now + 0.33);
+        } else if (type === 'again') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(440, now);
+          osc.frequency.exponentialRampToValueAtTime(310, now + 0.18);
+
+          gain.gain.setValueAtTime(0.001, now);
+          gain.gain.linearRampToValueAtTime(0.10, now + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now);
+          osc.stop(now + 0.23);
+        } else if (type === 'navigate') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(620, now);
+
+          gain.gain.setValueAtTime(0.001, now);
+          gain.gain.linearRampToValueAtTime(0.06, now + 0.01);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
+
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now);
+          osc.stop(now + 0.09);
+        }
+      } catch (err) {
+        console.warn('Audio feedback suppressed:', err);
+      }
+    }
+
+    // ==========================================
+    // 5. TOAST NOTIFICATION SYSTEM
+    // ==========================================
+    function showActionToast(icon, message, category = 'standard') {
+      toastIcon.innerHTML = icon;
+      toastMessage.textContent = message;
+
+      toastCard.className = 'action-toast-card';
+      if (category === 'knew') toastCard.classList.add('knew');
+      if (category === 'again') toastCard.classList.add('again');
+
+      actionToast.classList.add('show');
+      if (toastTimeout) clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        actionToast.classList.remove('show');
+      }, 1600);
+    }
+
+    // ==========================================
+    // 6. PARALLEL STARTUP (HandLandmarker numHands: 1, VIDEO, GPU)
+    // ==========================================
+    async function init() {
+      try {
+        const [models, stream] = await Promise.all([
+          loadHandModel(),
+          navigator.mediaDevices.getUserMedia({
+            video: {
+              width: { ideal: 640 },
+              height: { ideal: 480 },
+              facingMode: 'user'
+            },
+            audio: false
+          })
+        ]);
+
+        handLandmarker = models.handLandmarker;
+        video.srcObject = stream;
+
+        await new Promise((resolve) => {
+          video.onloadedmetadata = () => {
+            video.play();
+            resolve();
+          };
+        });
+
+        handleResize();
+
+        // Fade out loading screen smoothly
+        loadingScreen.style.opacity = '0';
+        setTimeout(() => {
+          loadingScreen.style.display = 'none';
+        }, 500);
+
+        // Start render & detection loop
+        requestAnimationFrame(renderLoop);
+      } catch (err) {
+        console.error('Initialization failed:', err);
+        showError(err);
+      }
+    }
+
+    async function loadHandModel() {
+      const wasmFileset = await FilesetResolver.forVisionTasks(
+        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
+      );
+
+      const handLandmarker = await HandLandmarker.createFromOptions(wasmFileset, {
+        baseOptions: {
+          modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task',
+          delegate: 'GPU'
+        },
+        runningMode: 'VIDEO',
+        numHands: 1
+      });
+
+      return { handLandmarker };
+    }
+
+    function showError(err) {
+      spinner.style.display = 'none';
+      loadingText.style.display = 'none';
+      errorBox.style.display = 'block';
+
+      const isFileProtocol = window.location.protocol === 'file:';
+      let msg = `<strong>Camera or Model Error:</strong> ${err.message || err}<br><br>`;
+      if (isFileProtocol) {
+        msg += `<strong>Notice:</strong> You are opening this page via <code>file://</code> protocol. Browser security blocks webcam access and WebAssembly on file URLs.<br><br>
+        Please serve this file using a local web server, for example:<br>
+        <code>npx serve</code> or <code>python -m http.server 8000</code><br>
+        and open <strong>http://localhost:8000</strong>.`;
+      } else {
+        msg += `Please make sure your camera is connected and you have <strong>allowed camera permissions</strong> for this site in your browser settings.`;
+      }
+      errorBox.innerHTML = msg;
+    }
+
+    function handleResize() {
+      overlayCanvas.width = video.videoWidth || 640;
+      overlayCanvas.height = video.videoHeight || 480;
+    }
+    window.addEventListener('resize', handleResize);
+
+    // ==========================================
+    // 7. FLASHCARD ENGINE
+    // ==========================================
+    function updateCardUI() {
+      if (studyQueue.length === 0) {
+        showCompletionBanner();
+        return;
+      }
+
+      completionBanner.classList.remove('show');
+
+      if (currentIndex >= studyQueue.length) {
+        currentIndex = 0;
+      } else if (currentIndex < 0) {
+        currentIndex = studyQueue.length - 1;
+      }
+
+      const curCard = studyQueue[currentIndex];
+      cardQuestionText.textContent = curCard.question;
+      cardAnswerText.textContent = curCard.answer;
+
+      // Update Card Counter
+      cardCounterTag.textContent = `Card ${currentIndex + 1} / ${studyQueue.length}`;
+      cardQueueStatus.textContent = studyQueue.length > 1 ? `${studyQueue.length} remaining` : 'Last card in queue';
+
+      // Update Session Stats
+      statRemainingVal.textContent = studyQueue.length;
+      statMasteredVal.textContent = totalMasteredCount;
+      statAgainVal.textContent = totalAgainCount;
+      statTotalActionsVal.textContent = totalActionCount;
+
+      // Update Progress
+      const totalCards = originalDeck.length;
+      const pct = Math.round((totalMasteredCount / Math.max(1, totalCards)) * 100);
+      progressFillBar.style.width = `${pct}%`;
+      masteryScoreTag.textContent = `${totalMasteredCount} / ${totalCards} Mastered (${pct}%)`;
+
+      // Reset flip to front when moving to new card
+      if (isFlipped) {
+        isFlipped = false;
+        cardWrapper.classList.remove('is-flipped');
+      }
+    }
+
+    function flipCard(source = 'manual') {
+      if (studyQueue.length === 0) return;
+      isFlipped = !isFlipped;
+      cardWrapper.classList.toggle('is-flipped', isFlipped);
+      playAudioTone('flip');
+      triggerGlowEffect();
+      totalActionCount++;
+      statTotalActionsVal.textContent = totalActionCount;
+
+      const triggerMsg = source === 'gesture' ? 'Open Palm' : 'Click / Space';
+      showActionToast('&#128260;', `Card Flipped (${triggerMsg})`);
+    }
+
+    function nextCard(source = 'manual') {
+      if (studyQueue.length === 0) return;
+      currentIndex = (currentIndex + 1) % studyQueue.length;
+      updateCardUI();
+      playAudioTone('navigate');
+      triggerGlowEffect();
+      totalActionCount++;
+      statTotalActionsVal.textContent = totalActionCount;
+
+      const triggerMsg = source === 'gesture' ? 'Point Right' : 'Next Card';
+      showActionToast('&#128073;', `Next Card (${triggerMsg})`);
+    }
+
+    function prevCard() {
+      if (studyQueue.length === 0) return;
+      currentIndex = (currentIndex - 1 + studyQueue.length) % studyQueue.length;
+      updateCardUI();
+      playAudioTone('navigate');
+      triggerGlowEffect();
+      totalActionCount++;
+      statTotalActionsVal.textContent = totalActionCount;
+      showActionToast('&#128072;', 'Previous Card');
+    }
+
+    function markIstatKnew(source = 'manual') {
+      if (studyQueue.length === 0) return;
+      playAudioTone('knew');
+      triggerGlowEffect();
+      totalActionCount++;
+
+      studyQueue.splice(currentIndex, 1);
+      totalMasteredCount++;
+
+      const triggerMsg = source === 'gesture' ? 'Thumbs up' : 'Key [K]';
+      showActionToast('&#128077;', `Marked: I Knew It! (${triggerMsg})`, 'knew');
+
+      if (studyQueue.length === 0) {
+        showCompletionBanner();
+      } else {
+        if (currentIndex >= studyQueue.length) {
+          currentIndex = 0;
+        }
+        updateCardUI();
+      }
+    }
+
+    function markAgain(source = 'manual') {
+      if (studyQueue.length === 0) return;
+      playAudioTone('again');
+      triggerGlowEffect();
+      totalActionCount++;
+
+      totalAgainCount++;
+      const card = studyQueue.splice(currentIndex, 1)[0];
+      studyQueue.push(card);
+
+      const triggerMsg = source === 'gesture' ? 'Thumbs down' : 'Key [A]';
+      showActionToast('&#128078;', `Marked: Again (${triggerMsg})`, 'again');
+
+      if (currentIndex >= studyQueue.length) {
+        currentIndex = 0;
+      }
+      updateCardUI();
+    }
+
+    function showCompletionBanner() {
+      compMasteredCount.textContent = totalMasteredCount;
+      compRepeatsCount.textContent = totalAgainCount;
+      progressFillBar.style.width = '100%';
+      masteryScoreTag.textContent = `${originalDeck.length} / ${originalDeck.length} Mastered (100%)`;
+      statRemainingVal.textContent = '0';
+      completionBanner.classList.add('show');
+      playAudioTone('knew');
+      showActionToast('&#127942;', 'Deck Completed! Great work!');
+    }
+
+    function restartDeck() {
+      studyQueue = [...originalDeck];
+      currentIndex = 0;
+      totalMasteredCount = 0;
+      totalAgainCount = 0;
+      isFlipped = false;
+      cardWrapper.classList.remove('is-flipped');
+      completionBanner.classList.remove('show');
+      updateCardUI();
+      showActionToast('&#8635;', 'Deck Reset: Good luck!');
+    }
+
+    function triggerGlowEffect() {
+      pipContainer.classList.add('action-glow');
+      setTimeout(() => pipContainer.classList.remove('action-glow'), 350);
+    }
+
+    // Button event listeners
+    cardScene.addEventListener('click', () => flipCard('click'));
+    btnFlipCard.addEventListener('click', () => flipCard('click'));
+    btnNextCard.addEventListener('click', () => nextCard('click'));
+    btnPrevCard.addEventListener('click', () => prevCard());
+    btnKnew.addEventListener('click', () => markIstatKnew('click'));
+    btnAgain.addEventListener('click', () => markAgain('click'));
+    btnRestartDeck.addEventListener('click', restartDeck);
+    btnEditFromBanner.addEventListener('click', () => openInputModal());
+
+    // Keyboard Shortcuts (Fallback)
+    window.addEventListener('keydown', (e) => {
+      if (document.activeElement === deckTextarea ||
+          document.activeElement === geminiApiKeyInput ||
+          document.activeElement === geminiNotesInput) return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        flipCard('keyboard');
+      } else if (e.code === 'ArrowRight') {
+        e.preventDefault();
+        nextCard('keyboard');
+      } else if (e.code === 'ArrowLeft') {
+        e.preventDefault();
+        prevCard();
+      } else if (e.key === 'k' || e.key === 'K') {
+        e.preventDefault();
+        markIstatKnew('keyboard');
+      } else if (e.key === 'a' || e.key === 'A') {
+        e.preventDefault();
+        markAgain('keyboard');
+      }
+    });
+
+    // ==========================================
+    // 8. DECK INPUT / MODAL & GEMINI AI SYSTEM
+    // ==========================================
+    function formatDeckToText(cards) {
+      return cards.map(c => `${c.question} | ${c.answer}`).join('\n');
+    }
+
+    function switchModalTab(tab) {
+      if (tab === 'gemini') {
+        tabGeminiBtn.classList.add('active');
+        tabManualBtn.classList.remove('active');
+        paneGemini.style.display = 'flex';
+        paneManual.style.display = 'none';
+        geminiStatusBox.style.display = 'none';
+      } else {
+        tabManualBtn.classList.add('active');
+        tabGeminiBtn.classList.remove('active');
+        paneManual.style.display = 'flex';
+        paneGemini.style.display = 'none';
+      }
+    }
+
+    tabGeminiBtn.addEventListener('click', () => switchModalTab('gemini'));
+    tabManualBtn.addEventListener('click', () => switchModalTab('manual'));
+
+    function openInputModal(defaultTab = 'manual') {
+      switchModalTab(defaultTab);
+      deckTextarea.value = formatDeckToText(originalDeck);
+      inputModal.classList.add('show');
+    }
+
+    function closeModal() {
+      inputModal.classList.remove('show');
+      geminiStatusBox.style.display = 'none';
+      geminiLoadingBox.style.display = 'none';
+      btnGenerateCards.disabled = false;
+    }
+
+    btnOpenGeminiModal.addEventListener('click', () => openInputModal('gemini'));
+    btnOpenInputModal.addEventListener('click', () => openInputModal('manual'));
+    btnCloseModal.addEventListener('click', closeModal);
+    btnDismissModal.addEventListener('click', closeModal);
+    btnDismissModalGemini.addEventListener('click', closeModal);
+
+    btnLoadExample.addEventListener('click', () => {
+      deckTextarea.value = formatDeckToText(EXAMPLE_CARDS);
+    });
+
+    btnLoadCards.addEventListener('click', () => {
+      const lines = deckTextarea.value.split('\n');
+      const newCards = [];
+
+      for (let rawLine of lines) {
+        const line = rawLine.trim();
+        if (!line) continue;
+        const parts = line.split('|');
+        if (parts.length >= 2) {
+          const q = parts[0].trim();
+          const a = parts.slice(1).join('|').trim();
+          if (q && a) {
+            newCards.push({ question: q, answer: a });
+          }
+        }
+      }
+
+      if (newCards.length === 0) {
+        alert("Please provide at least one valid card formatted as 'Question | Answer'.");
+        return;
+      }
+
+      originalDeck = newCards;
+      restartDeck();
+      closeModal();
+      showActionToast('&#128218;', `Loaded ${newCards.length} cards into deck!`);
+    });
+
+    // Gemini 2.5 Flash Flashcard Generator
+    btnGenerateCards.addEventListener('click', async () => {
+      geminiStatusBox.style.display = 'none';
+      const apiKey = geminiApiKeyInput.value.trim();
+      const notes = geminiNotesInput.value.trim();
+
+      // Hint if no API key is provided
+      if (!apiKey) {
+        geminiStatusBox.className = 'gemini-status-box hint';
+        geminiStatusBox.innerHTML = `
+          <strong>&#9888; API Key Required:</strong> Please enter your Gemini API key above to generate cards automatically.<br><br>
+          &#128161; <strong>Don't have an API key?</strong> You can also create cards in the free <a href="https://gemini.google.com" target="_blank" style="color:#00ffd0; text-decoration:underline; font-weight:700;">Google Gemini web app</a>!<br>
+          Ask Gemini:<br>
+          <code style="background:rgba(0,255,208,0.15); padding:2px 6px; border-radius:4px; color:#00ffd0;">"Generate 10 flashcards from these notes formatted as Question | Answer"</code><br>
+          Then switch to the <strong>Manual / Paste Cards</strong> tab and paste them directly!
+        `;
+        geminiStatusBox.style.display = 'block';
+        return;
+      }
+
+      if (!notes) {
+        geminiStatusBox.className = 'gemini-status-box error';
+        geminiStatusBox.innerHTML = `&#9888; <strong>Missing Notes:</strong> Please paste your lecture notes or study material first.`;
+        geminiStatusBox.style.display = 'block';
+        return;
+      }
+
+      // Begin call
+      geminiLoadingBox.style.display = 'flex';
+      btnGenerateCards.disabled = true;
+
+      try {
+        const prompt = `You are an expert tutor creating study materials for a student.
+Create exactly 10 high-quality, conceptual flashcards from the following lecture notes.
+Return ONLY a valid JSON array of exactly 10 objects with keys "q" (the question) and "a" (the concise, clear answer).
+Example format:
+[
+  {"q": "What is ...?", "a": "It is ..."}
+]
+Do not wrap in any markdown prose or explanation. Output strictly valid JSON.
+
+Lecture Notes:
+${notes}`;
+
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            contents: [
+              { parts: [{ text: prompt }] }
+            ],
+            generationConfig: {
+              temperature: 0.3,
+              responseMimeType: 'application/json'
+            }
+          })
+        });
+
+        if (!response.ok) {
+          let errDetails = `HTTP ${response.status} ${response.statusText}`;
+          try {
+            const errJson = await response.json();
+            if (errJson.error && errJson.error.message) {
+              errDetails = errJson.error.message;
+            }
+          } catch (_) {}
+          throw new Error(`Gemini API Error: ${errDetails}`);
+        }
+
+        const resultData = await response.json();
+        const rawText = resultData.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!rawText) {
+          throw new Error('Gemini API did not return any text. Please try again.');
+        }
+
+        // Safely strip code fences if any
+        let cleaned = rawText.trim();
+        cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+
+        const startIdx = cleaned.indexOf('[');
+        const endIdx = cleaned.lastIndexOf(']');
+        if (startIdx !== -1 && endIdx !== -1) {
+          cleaned = cleaned.substring(startIdx, endIdx + 1);
+        }
+
+        const parsedCards = JSON.parse(cleaned);
+        if (!Array.isArray(parsedCards) || parsedCards.length === 0) {
+          throw new Error('Parsed response was not an array of flashcards.');
+        }
+
+        const newDeck = [];
+        for (const item of parsedCards) {
+          const q = item.q || item.question || item.prompt;
+          const a = item.a || item.answer || item.response;
+          if (q && a) {
+            newDeck.push({ question: String(q).trim(), answer: String(a).trim() });
+          }
+        }
+
+        if (newDeck.length === 0) {
+          throw new Error('Could not find valid question/answer pairs in Gemini response.');
+        }
+
+        originalDeck = newDeck;
+        restartDeck();
+        closeModal();
+        showActionToast('&#10024;', `Generated ${newDeck.length} cards with Gemini!`, 'knew');
+
+      } catch (err) {
+        console.error('Gemini generation error:', err);
+        geminiStatusBox.className = 'gemini-status-box error';
+        geminiStatusBox.innerHTML = `&#10008; <strong>Generation Failed:</strong> ${err.message || 'Please check your API key, network connection, or rate limits.'}`;
+        geminiStatusBox.style.display = 'block';
+      } finally {
+        geminiLoadingBox.style.display = 'none';
+        btnGenerateCards.disabled = false;
+      }
+    });
+
+    // ==========================================
+    // 9. HAND OPENNESS & GESTURE CLASSIFIER
+    // ==========================================
+    // Reusing the hand-openness calculation:
+    // Openness = average distance of the 5 fingertips (4, 8, 12, 16, 20) from the wrist (0)
+    // divided by wrist-to-middle-finger-base distance (9), normalized: fist ~0, open ~1
+    function computeHandOpenness(lm) {
+      const wrist = lm[0];
+      const middleMcp = lm[9];
+      const baseDist = Math.hypot(middleMcp.x - wrist.x, middleMcp.y - wrist.y) || 0.001;
+
+      const tipIndices = [4, 8, 12, 16, 20];
+      let sumDist = 0;
+      for (const idx of tipIndices) {
+        sumDist += Math.hypot(lm[idx].x - wrist.x, lm[idx].y - wrist.y);
+      }
+      const avgDist = sumDist / tipIndices.length;
+      const rawRatio = avgDist / baseDist;
+
+      // In a fist, rawRatio is typically 1.0 - 1.25.
+      // In a fully open hand, rawRatio is typically 1.95 - 2.45.
+      // Normalize to [0, 1]
+      const normalized = Math.min(1, Math.max(0, (rawRatio - 1.15) / (2.1 - 1.15)));
+      return normalized;
+    }
+
+    // Check if the other 4 fingers (index, middle, ring, pinky) are curled
+    function areOtherFingersCurled(lm) {
+      const wrist = lm[0];
+      const tips = [8, 12, 16, 20];
+      const pips = [6, 10, 14, 18];
+      const mcps = [5, 9, 13, 17];
+
+      let curledCount = 0;
+      for (let i = 0; i < 4; i++) {
+        const dTip = Math.hypot(lm[tips[i]].x - wrist.x, lm[tips[i]].y - wrist.y);
+        const dPip = Math.hypot(lm[pips[i]].x - wrist.x, lm[pips[i]].y - wrist.y);
+        const dMcp = Math.hypot(lm[mcps[i]].x - wrist.x, lm[mcps[i]].y - wrist.y);
+
+        // Curled if tip is closer to wrist than PIP or within MCP radius
+        if (dTip < dPip || dTip < dMcp * 1.35 || lm[tips[i]].y > lm[pips[i]].y) {
+          curledCount++;
+        }
+      }
+      return curledCount >= 3;
+    }
+
+    function classifyGesture(lm) {
+      const rawOpenness = computeHandOpenness(lm);
+
+      // Smooth openness with factor 0.18 (responsive & jitter-free)
+      if (smoothedOpenness === null) {
+        smoothedOpenness = rawOpenness;
+      } else {
+        smoothedOpenness = smoothedOpenness * 0.82 + rawOpenness * 0.18;
+      }
+
+      const wrist = lm[0];
+      const indexMcp = lm[5];
+      const thumbTip = lm[4];
+      const thumbIp = lm[3];
+
+      // Finger tip vs PIP joints for 4 fingers
+      const isIndexExt = lm[8].y < lm[6].y;
+      const isMiddleExt = lm[12].y < lm[10].y;
+      const isRingExt = lm[16].y < lm[14].y;
+      const isPinkyExt = lm[20].y < lm[18].y;
+
+      const numExtendedFingers = (isIndexExt ? 1 : 0) + (isMiddleExt ? 1 : 0) + (isRingExt ? 1 : 0) + (isPinkyExt ? 1 : 0);
+
+      // 1. OPEN PALM (to flip between Q&A): All fingers extended and high openness
+      if (smoothedOpenness > 0.60 || numExtendedFingers >= 4) {
+        return { name: 'Open palm', openness: smoothedOpenness };
+      }
+
+      // 2. POINTING (Index extended only, other 3 curled)
+      if (isIndexExt && !isMiddleExt && !isRingExt && !isPinkyExt) {
+        const dx = lm[8].x - lm[5].x;
+        // In mirrored video, physical right is negative dx in camera coordinates
+        if (dx < -0.07) {
+          return { name: 'Point right', openness: smoothedOpenness };
+        } else if (dx > 0.07) {
+          return { name: 'Point left', openness: smoothedOpenness };
+        }
+      }
+
+      // 3. THUMBS UP & THUMBS DOWN: 4 fingers curled
+      const otherCurled = areOtherFingersCurled(lm);
+      if (otherCurled && numExtendedFingers <= 1) {
+        // Thumbs Up
+        if (thumbTip.y < indexMcp.y - 0.04 && thumbTip.y < wrist.y - 0.08 && thumbTip.y < thumbIp.y) {
+          return { name: 'Thumbs up', openness: smoothedOpenness };
+        }
+        // Thumbs Down
+        if (thumbTip.y > indexMcp.y + 0.04 && thumbTip.y > wrist.y + 0.04 && thumbTip.y > thumbIp.y) {
+          return { name: 'Thumbs down', openness: smoothedOpenness };
+        }
+      }
+
+      return { name: 'Neutral', openness: smoothedOpenness };
+    }
+
+    // ==========================================
+    // 10. GESTURE ACTION ORCHESTRATOR
+    // ==========================================
+    function handleGestureStateMachine(gestureResult, now) {
+      // 1-Second Cooldown Check
+      const timeSinceLastAction = now - lastActionTriggerTime;
+      const inCooldown = timeSinceLastAction < GESTURE_COOLDOWN_MS;
+      const cooldownProgress = Math.min(100, Math.max(0, (timeSinceLastAction / GESTURE_COOLDOWN_MS) * 100));
+
+      hudCooldownFill.style.width = `${cooldownProgress}%`;
+      hudCooldownVal.textContent = inCooldown ? `${((GESTURE_COOLDOWN_MS - timeSinceLastAction) / 1000).toFixed(1)}s` : 'Ready';
+
+      // Clear highlights on legend
+      legendFlip.classList.remove('active');
+      legendThumbsUp.classList.remove('active');
+      legendThumbsDown.classList.remove('active');
+      legendNext.classList.remove('active');
+      legendPrev.classList.remove('active');
+
+      if (!gestureResult) {
+        currentLiveGesture = 'No hand';
+        openPalmHoldStartTime = 0;
+        thumbsUpStartTime = 0;
+        thumbsDownStartTime = 0;
+        pointRightStartTime = 0;
+        pointLeftStartTime = 0;
+
+        updateHUDIndicators('No hand', 0, 0, 'No hand');
+        return;
+      }
+
+      const { name, openness } = gestureResult;
+      currentLiveGesture = name;
+
+      let holdPct = 0;
+      let holdText = '--';
+
+      if (inCooldown) {
+        // In cooldown period: suppress triggers and reset hold timers
+        openPalmHoldStartTime = 0;
+        thumbsUpStartTime = 0;
+        thumbsDownStartTime = 0;
+        pointRightStartTime = 0;
+        pointLeftStartTime = 0;
+        updateHUDIndicators(name, openness, 0, 'Cooldown');
+        return;
+      }
+
+      // --- Gesture Actions ---
+      if (name === 'Open palm') {
+        legendFlip.classList.add('active');
+        if (openPalmHoldStartTime === 0) openPalmHoldStartTime = now;
+        thumbsUpStartTime = 0;
+        thumbsDownStartTime = 0;
+        pointRightStartTime = 0;
+        pointLeftStartTime = 0;
+
+        const holdDuration = now - openPalmHoldStartTime;
+        holdPct = Math.min(100, (holdDuration / OPEN_PALM_HOLD_REQ_MS) * 100);
+        holdText = `${(holdDuration / 1000).toFixed(2)}s / 0.3s`;
+
+        if (holdDuration >= OPEN_PALM_HOLD_REQ_MS) {
+          lastActionTriggerTime = now;
+          openPalmHoldStartTime = 0;
+          flipCard('gesture');
+        }
+
+      } else if (name === 'Thumbs up') {
+        legendThumbsUp.classList.add('active');
+        openPalmHoldStartTime = 0;
+        thumbsDownStartTime = 0;
+        pointRightStartTime = 0;
+        pointLeftStartTime = 0;
+
+        if (thumbsUpStartTime === 0) thumbsUpStartTime = now;
+        const holdDuration = now - thumbsUpStartTime;
+        holdPct = Math.min(100, (holdDuration / THUMB_HOLD_REQ_MS) * 100);
+        holdText = `Triggering...`;
+
+        if (holdDuration >= THUMB_HOLD_REQ_MS) {
+          lastActionTriggerTime = now;
+          thumbsUpStartTime = 0;
+          markIstatKnew('gesture');
+        }
+
+      } else if (name === 'Thumbs down') {
+        legendThumbsDown.classList.add('active');
+        openPalmHoldStartTime = 0;
+        thumbsUpStartTime = 0;
+        pointRightStartTime = 0;
+        pointLeftStartTime = 0;
+
+        if (thumbsDownStartTime === 0) thumbsDownStartTime = now;
+        const holdDuration = now - thumbsDownStartTime;
+        holdPct = Math.min(100, (holdDuration / THUMB_HOLD_REQ_MS) * 100);
+        holdText = `Triggering...`;
+
+        if (holdDuration >= THUMB_HOLD_REQ_MS) {
+          lastActionTriggerTime = now;
+          thumbsDownStartTime = 0;
+          markAgain('gesture');
+        }
+
+      } else if (name === 'Point right') {
+        legendNext.classList.add('active');
+        openPalmHoldStartTime = 0;
+        thumbsUpStartTime = 0;
+        thumbsDownStartTime = 0;
+        pointLeftStartTime = 0;
+
+        if (pointRightStartTime === 0) pointRightStartTime = now;
+        const holdDuration = now - pointRightStartTime;
+        holdPct = Math.min(100, (holdDuration / POINT_HOLD_REQ_MS) * 100);
+        holdText = `Triggering...`;
+
+        if (holdDuration >= POINT_HOLD_REQ_MS) {
+          lastActionTriggerTime = now;
+          pointRightStartTime = 0;
+          nextCard('gesture');
+        }
+
+      } else if (name === 'Point left') {
+        legendPrev.classList.add('active');
+        openPalmHoldStartTime = 0;
+        thumbsUpStartTime = 0;
+        thumbsDownStartTime = 0;
+        pointRightStartTime = 0;
+
+        if (pointLeftStartTime === 0) pointLeftStartTime = now;
+        const holdDuration = now - pointLeftStartTime;
+        holdPct = Math.min(100, (holdDuration / POINT_HOLD_REQ_MS) * 100);
+        holdText = `Triggering...`;
+
+        if (holdDuration >= POINT_HOLD_REQ_MS) {
+          lastActionTriggerTime = now;
+          pointLeftStartTime = 0;
+          prevCard();
+        }
+
+      } else {
+        openPalmHoldStartTime = 0;
+        thumbsUpStartTime = 0;
+        thumbsDownStartTime = 0;
+        pointRightStartTime = 0;
+        pointLeftStartTime = 0;
+      }
+
+      updateHUDIndicators(name, openness, holdPct, holdText);
+    }
+
+    function updateHUDIndicators(gestureName, openness, holdPct, holdText) {
+      hudOpennessVal.textContent = `${Math.round(openness * 100)}%`;
+      hudOpennessFill.style.width = `${Math.round(openness * 100)}%`;
+
+      hudHoldFill.style.width = `${holdPct}%`;
+      hudHoldVal.textContent = holdText;
+
+      // Small Live Indicator inside PiP
+      pipIndicatorText.textContent = gestureName;
+
+      // Color mapping
+      let color = '#64748b';
+      let icon = '&#9675;';
+
+      if (gestureName === 'Open palm') {
+        color = '#00ffd0';
+        icon = '&#9995;';
+      } else if (gestureName === 'Thumbs up') {
+        color = '#10b981';
+        icon = '&#128077;';
+      } else if (gestureName === 'Thumbs down') {
+        color = '#ef4444';
+        icon = '&#128078;';
+      } else if (gestureName === 'Point right') {
+        color = '#6a8dff';
+        icon = '&#128073;';
+      } else if (gestureName === 'Point left') {
+        color = '#6a8dff';
+        icon = '&#128072;';
+      } else if (gestureName === 'Neutral') {
+        color = '#94a3b8';
+        icon = '&#9675;';
+      }
+
+      hudStateText.textContent = gestureName;
+      hudStateText.style.color = color;
+      hudStateDot.style.background = color;
+      pipIndicatorIcon.innerHTML = icon;
+      pipGestureIndicator.style.borderColor = color;
+
+      if (gestureName !== 'No hand') {
+        hudConfidenceText.textContent = 'Active';
+        hudConfidenceText.style.color = '#00ffd0';
+        pipLiveDot.style.background = '#00ffd0';
+      } else {
+        hudConfidenceText.textContent = 'Searching';
+        hudConfidenceText.style.color = '#64748b';
+        pipLiveDot.style.background = '#ffd166';
+      }
+    }
+
+    // ==========================================
+    // 11. NEON HAND SKELETON DRAWING
+    // ==========================================
+    function drawNeonHand(landmarks) {
+      const w = overlayCanvas.width;
+      const h = overlayCanvas.height;
+      oCtx.clearRect(0, 0, w, h);
+
+      if (!landmarks || landmarks.length === 0) return;
+
+      const fingerColors = {
+        thumb: '#ff5f7a',
+        index: '#ffd166',
+        middle: '#00ffd0',
+        ring: '#4cc9f0',
+        pinky: '#c77dff',
+        palm: '#ffffff'
+      };
+
+      const fingerChains = [
+        { color: fingerColors.thumb, chain: [1, 2, 3, 4] },
+        { color: fingerColors.index, chain: [5, 6, 7, 8] },
+        { color: fingerColors.middle, chain: [9, 10, 11, 12] },
+        { color: fingerColors.ring, chain: [13, 14, 15, 16] },
+        { color: fingerColors.pinky, chain: [17, 18, 19, 20] }
+      ];
+
+      const palmEdges = [
+        [0, 1], [0, 5], [5, 9], [9, 13], [13, 17], [0, 17]
+      ];
+
+      // 1. Palm lines
+      for (const [i1, i2] of palmEdges) {
+        drawGlowingLine(
+          oCtx,
+          landmarks[i1].x * w, landmarks[i1].y * h,
+          landmarks[i2].x * w, landmarks[i2].y * h,
+          fingerColors.palm,
+          fingerColors.palm
+        );
+      }
+
+      // 2. Finger lines
+      for (const f of fingerChains) {
+        for (let k = 0; k < f.chain.length - 1; k++) {
+          const i1 = f.chain[k];
+          const i2 = f.chain[k + 1];
+          drawGlowingLine(
+            oCtx,
+            landmarks[i1].x * w, landmarks[i1].y * h,
+            landmarks[i2].x * w, landmarks[i2].y * h,
+            f.color,
+            f.color
+          );
+        }
+      }
+
+      // 3. Glowing joint dots
+      for (let i = 0; i < landmarks.length; i++) {
+        let dotColor = fingerColors.palm;
+        let dotRadius = 3.5;
+
+        if (i >= 1 && i <= 4) dotColor = fingerColors.thumb;
+        else if (i >= 5 && i <= 8) dotColor = fingerColors.index;
+        else if (i >= 9 && i <= 12) dotColor = fingerColors.middle;
+        else if (i >= 13 && i <= 16) dotColor = fingerColors.ring;
+        else if (i >= 17 && i <= 20) dotColor = fingerColors.pinky;
+
+        if (i === 4 || i === 8 || i === 12 || i === 16 || i === 20) {
+          dotRadius = 6.0;
+        }
+
+        drawGlowingDot(oCtx, landmarks[i].x * w, landmarks[i].y * h, dotRadius, dotColor);
+      }
+    }
+
+    function drawGlowingLine(ctx, x1, y1, x2, y2, c1, c2) {
+      ctx.save();
+      const grad = ctx.createLinearGradient(x1, y1, x2, y2);
+      grad.addColorStop(0, c1);
+      grad.addColorStop(1, c2);
+
+      // Glowing outer halo
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = c1;
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 3.5;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+
+      // Sharp white core
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawGlowingDot(ctx, x, y, r, color) {
+      ctx.save();
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = color;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(x, y, Math.max(1.2, r * 0.45), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // ==========================================
+    // 12. MAIN DETECTION & ANIMATION LOOP
+    // ==========================================
+    let lastDetectedHand = null;
+
+    function renderLoop() {
+      const now = performance.now();
+
+      if (video.currentTime !== lastVideoTime && video.readyState >= 2) {
+        lastVideoTime = video.currentTime;
+
+        if (handLandmarker) {
+          const results = handLandmarker.detectForVideo(video, now);
+
+          if (results && results.landmarks && results.landmarks.length > 0) {
+            lastDetectedHand = results.landmarks[0];
+            drawNeonHand(lastDetectedHand);
+          } else {
+            lastDetectedHand = null;
+            oCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+          }
+        }
+      }
+
+      // Smoothly advance hold timers and cooldowns every display frame
+      if (lastDetectedHand) {
+        const gestureResult = classifyGesture(lastDetectedHand);
+        handleGestureStateMachine(gestureResult, now);
+      } else {
+        handleGestureStateMachine(null, now);
+      }
+
+      requestAnimationFrame(renderLoop);
+    }
+
+    // ==========================================
+    // 13. STARTUP ENTRY POINT
+    // ==========================================
+    window.addEventListener('DOMContentLoaded', () => {
+      updateCardUI();
+      init();
+    });
+  </script>
+</body>
+</html>
